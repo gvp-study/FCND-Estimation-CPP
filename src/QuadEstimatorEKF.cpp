@@ -178,6 +178,8 @@ VectorXf QuadEstimatorEKF::PredictState(VectorXf curState, float dt, V3F accel, 
   predictedState(4) = curState(4) + accelI.y * dt;
   predictedState(5) = curState(5) + accelI.z * dt - CONST_GRAVITY * dt;
   
+  predictedState(6) = AngleNormF(predictedState(6));
+
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
   return predictedState;

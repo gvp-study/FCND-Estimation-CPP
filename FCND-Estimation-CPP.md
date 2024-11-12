@@ -188,7 +188,11 @@ In this next step you will be implementing the prediction step of your filter.
 
 1. Run scenario `08_PredictState`.  This scenario is configured to use a perfect IMU (only an IMU). Due to the sensitivity of double-integration to attitude errors, we've made the accelerometer update very insignificant (`QuadEstimatorEKF.attitudeTau = 100`).  The plots on this simulation show element of your estimated state and that of the true state.  At the moment you should see that your estimated state does not follow the true state.
 
+   
+
 2. In `QuadEstimatorEKF.cpp`, implement the state prediction step in the `PredictState()` functon. If you do it correctly, when you run scenario `08_PredictState` you should see the estimator state track the actual state, with only reasonably slow drift, as shown in the figure below:
+
+3. ![predict drift](Docs/08_PredictState_1.png)
 
 ![predict drift](images/predict-slow-drift.png)
 
@@ -205,21 +209,9 @@ In this next step you will be implementing the prediction step of your filter.
 
 **Hint: recall that the control input is the acceleration!**
 
-5. Run your covariance prediction and tune the `QPosXYStd` and the `QVelXYStd` process parameters in `QuadEstimatorEKF.txt` to try to capture the magnitude of the error you see. Note that as error grows our simplified model will not capture the real error dynamics (for example, specifically, coming from attitude errors), therefore  try to make it look reasonable only for a relatively short prediction period (the scenario is set for one second).  A good solution looks as follows:
+5. I tuned the process parameters`QPosXYStd` to 0.01 and the `QVelXYStd` to 0.1 in `QuadEstimatorEKF.txt` to keep the 10 graphs within the white sigma bounds. The result looks as follows:
 
-![good covariance](images/predict-good-cov.png)
-
-Looking at this result, you can see that in the first part of the plot, our covariance (the white line) grows very much like the data.
-
-If we look at an example with a `QPosXYStd` that is much too high (shown below), we can see that the covariance no longer grows in the same way as the data.
-
-![bad x covariance](images/bad-x-sigma.PNG)
-
-Another set of bad examples is shown below for having a `QVelXYStd` too large (first) and too small (second).  As you can see, once again, our covariances in these cases no longer model the data well.
-
-![bad vx cov large](images/bad-vx-sigma.PNG)
-
-![bad vx cov small](images/bad-vx-sigma-low.PNG)
+![good covariance](Docs/09_PredictCovariance_1.png)
 
 ***Success criteria:*** *This step doesn't have any specific measurable criteria being checked.*
 
@@ -236,38 +228,78 @@ Up until now we've only used the accelerometer and gyro for our state estimation
 
 3. Implement magnetometer update in the function `UpdateFromMag()`.  Once completed, you should see a resulting plot similar to this one:
 
-![mag good](images/mag-good-solution.png)
+![mag good](Docs/10_MagUpdate_1.png)
 
 ***Success criteria:*** *Your goal is to both have an estimated standard deviation that accurately captures the error and maintain an error of less than 0.1rad in heading for at least 10 seconds of the simulation.*
 
-**Hint: after implementing the magnetometer update, you may have to once again tune the parameter `QYawStd` to better balance between the long term drift and short-time noise from the magnetometer.**
-
-**Hint: see section 7.3.2 of [Estimation for Quadrotors](https://www.overleaf.com/read/vymfngphcccj) for a refresher on the magnetometer update.**
+```c
+Simulation #4 (../config/10_MagUpdate.txt)
+PASS: ABS(Quad.Est.E.Yaw) was less than 0.120000 for at least 10.000000 seconds
+PASS: ABS(Quad.Est.E.Yaw-0.000000) was less than Quad.Est.S.Yaw for 71% of the time
+```
 
 
 ### Step 5: Closed Loop + GPS Update ###
 
-1. Run scenario `11_GPSUpdate`.  At the moment this scenario is using both an ideal estimator and and ideal IMU.  Even with these ideal elements, watch the position and velocity errors (bottom right). As you see they are drifting away, since GPS update is not yet implemented.
+1. Run scenario `11_GPSUpdate`.  To get the realistic IMU I modified`config/11_GPSUpdate.txt`:
 
-2. Let's change to using your estimator by setting `Quad.UseIdealEstimator` to 0 in `config/11_GPSUpdate.txt`.  Rerun the scenario to get an idea of how well your estimator work with an ideal IMU.
-
-3. Now repeat with realistic IMU by commenting out these lines in `config/11_GPSUpdate.txt`:
 ```
+Quad.UseIdealEstimator = 0
 #SimIMU.AccelStd = 0,0,0
 #SimIMU.GyroStd = 0,0,0
 ```
 
-4. Tune the process noise model in `QuadEstimatorEKF.txt` to try to approximately capture the error you see with the estimated uncertainty (standard deviation) of the filter.
+Tuned the process noise model in `QuadEstimatorEKF.txt` to try to approximately capture the error you see with the estimated uncertainty (standard deviation) of the filter.
 
-5. Implement the EKF GPS Update in the function `UpdateFromGPS()`.
+```
+# GPS measurement std deviations
+GPSPosXYStd = 10
+GPSPosZStd = 5
+GPSVelXYStd = .1
+GPSVelZStd = .3
+```
 
-6. Now once again re-run the simulation.  Your objective is to complete the entire simulation cycle with estimated position error of < 1m (you’ll see a green box over the bottom graph if you succeed).  You may want to try experimenting with the GPS update parameters to try and get better performance.
+Implemented the EKF GPS Update in the function `UpdateFromGPS()` as shown below.
+
+```c++
+void QuadEstimatorEKF::UpdateFromGPS(V3F pos, V3F vel)
+{
+  VectorXf z(6), zFromX(6);
+  z(0) = pos.x;
+  z(1) = pos.y;
+  z(2) = pos.z;
+  z(3) = vel.x;
+  z(4) = vel.y;
+  z(5) = vel.z;
+
+  MatrixXf hPrime(6, QUAD_EKF_NUM_STATES);
+  hPrime.setZero();
+
+  // GPS UPDATE
+  // Hints: 
+  //  - The GPS measurement covariance is available in member variable R_GPS
+  //  - this is a very simple update
+  ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
+
+  hPrime.topLeftCorner(QUAD_EKF_NUM_STATES - 1, QUAD_EKF_NUM_STATES - 1) = MatrixXf::Identity(QUAD_EKF_NUM_STATES - 1, QUAD_EKF_NUM_STATES - 1);
+  zFromX = hPrime * ekfState;
+  
+  /////////////////////////////// END STUDENT CODE ////////////////////////////
+
+  Update(z, hPrime, R_GPS, zFromX);
+}
+```
+
+The result is a run shown below which meets the estimate position error of < 1m. 
+
+![mag good](Docs/11_GPSUpdate_1.png)
 
 ***Success criteria:*** *Your objective is to complete the entire simulation cycle with estimated position error of < 1m.*
 
-**Hint: see section 7.3.1 of [Estimation for Quadrotors](https://www.overleaf.com/read/vymfngphcccj) for a refresher on the GPS update.**
-
-At this point, congratulations on having a working estimator!
+```c
+Simulation #3 (../config/11_GPSUpdate.txt)
+PASS: ABS(Quad.Est.E.Pos) was less than 1.000000 for at least 20.000000 seconds
+```
 
 ### Step 6: Adding Your Controller ###
 
