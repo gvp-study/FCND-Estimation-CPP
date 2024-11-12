@@ -93,14 +93,20 @@ void QuadEstimatorEKF::UpdateFromIMU(V3F accel, V3F gyro)
   // SMALL ANGLE GYRO INTEGRATION:
   // (replace the code below)
   // make sure you comment it out when you add your own code -- otherwise e.g. you might integrate yaw twice
-
+/*
   float predictedPitch = pitchEst + dtIMU * gyro.y;
   float predictedRoll = rollEst + dtIMU * gyro.x;
-  ekfState(6) = ekfState(6) + dtIMU * gyro.z;	// yaw
-
-  // normalize yaw to -pi .. pi
-  if (ekfState(6) > F_PI) ekfState(6) -= 2.f*F_PI;
-  if (ekfState(6) < -F_PI) ekfState(6) += 2.f*F_PI;
+  ekfState(6) = AngleNormF(ekfState(6) + dtIMU * gyro.z);
+  */
+  //
+  // Non linear integration of the body rate using quaternions.
+  //
+  Quaternion<float> q = Quaternion<float>::FromEuler123_RPY(rollEst, pitchEst, ekfState(6));
+  q.IntegrateBodyRate(gyro, dtIMU);
+  
+  float predictedPitch = q.Pitch();
+  float predictedRoll = q.Roll();
+  ekfState(6) = AngleNormF(q.Yaw());
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
@@ -109,8 +115,8 @@ void QuadEstimatorEKF::UpdateFromIMU(V3F accel, V3F gyro)
   accelPitch = atan2f(-accel.x, 9.81f);
 
   // FUSE INTEGRATION AND UPDATE
-  rollEst = attitudeTau / (attitudeTau + dtIMU) * (predictedRoll)+dtIMU / (attitudeTau + dtIMU) * accelRoll;
-  pitchEst = attitudeTau / (attitudeTau + dtIMU) * (predictedPitch)+dtIMU / (attitudeTau + dtIMU) * accelPitch;
+  rollEst = attitudeTau / (attitudeTau + dtIMU) * (predictedRoll) + dtIMU / (attitudeTau + dtIMU) * accelRoll;
+  pitchEst = attitudeTau / (attitudeTau + dtIMU) * (predictedPitch) + dtIMU / (attitudeTau + dtIMU) * accelPitch;
 
   lastGyro = gyro;
 }
@@ -198,8 +204,8 @@ MatrixXf QuadEstimatorEKF::GetRbgPrime(float roll, float pitch, float yaw)
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
   RbgPrime(0, 0) = -cos(pitch) * sin(yaw);
-  RbgPrime(0, 1) = -sin(roll) * sin(pitch) * sin(yaw) - cos(pitch) * cos(yaw);
-  RbgPrime(0, 2) = -cos(roll) * sin(pitch) * sin(yaw) + sin(pitch) * cos(yaw);
+  RbgPrime(0, 1) = -sin(roll) * sin(pitch) * sin(yaw) - cos(roll) * cos(yaw);
+  RbgPrime(0, 2) = -cos(roll) * sin(pitch) * sin(yaw) + sin(roll) * cos(yaw);
   
   RbgPrime(1, 0) = cos(pitch) * cos(yaw);
   RbgPrime(1, 1) = sin(roll) * sin(pitch) * cos(yaw) - cos(roll) * sin(yaw);
@@ -239,7 +245,7 @@ void QuadEstimatorEKF::Predict(float dt, V3F accel, V3F gyro)
   //   2) Once all the matrices are there, write the equation to update cov.
   //
   // - if you want to transpose a matrix in-place, use A.transposeInPlace(), not A = A.transpose()
-  // 
+  //
   // we'll want the partial derivative of the Rbg matrix
   MatrixXf RbgPrime = GetRbgPrime(rollEst, pitchEst, ekfState(6));
 
@@ -253,10 +259,14 @@ void QuadEstimatorEKF::Predict(float dt, V3F accel, V3F gyro)
   gPrime(1, 4) = dt;
   gPrime(2, 5) = dt;
   
-  gPrime(3, 6) = (RbgPrime(0) * accel).sum() * dt;
-  gPrime(4, 6) = (RbgPrime(1) * accel).sum() * dt;
-  gPrime(5, 6) = (RbgPrime(2) * accel).sum() * dt;
+  VectorXf u(3);
+  u << accel[0], accel[1], accel[2];
+  VectorXf Rbg_u = RbgPrime * (u * dt);
   
+  gPrime(3, 6) = Rbg_u(0);
+  gPrime(4, 6) = Rbg_u(1);
+  gPrime(5, 6) = Rbg_u(2);
+
   ekfCov = gPrime * ekfCov * gPrime.transpose() + Q;
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////

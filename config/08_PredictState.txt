@@ -8,7 +8,7 @@ INCLUDE QuadEstimatorEKF.txt
 Sim.RunMode = Repeat
 Sim.EndTime = 40
 Sim.Vehicle1 = Quad
-Quad.InitialPos=0,0,-1
+Quad.InitialPos=0,0,1
 
 # REFERENCE
 QuadControlParams.Trajectory=traj/Square.txt

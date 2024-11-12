@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Directory containing the .txt files
-CONFIG_DIR="config"
+CONFIG_DIR="config/traj"
 
 # Loop through each .txt file in the directory
 for file in "$CONFIG_DIR"/*.txt; do
