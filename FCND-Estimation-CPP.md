@@ -307,18 +307,27 @@ Up to this point, we have been working with a controller that has been relaxed t
 
 I replaced all the QuadControl.cpp functions with the code I made for the FCND-Controller-CPP project. I confirmed that the pass criterion of < 1m was met as with the original code.
 
-1. Replace `QuadController.cpp` with the controller you wrote in the last project.
+1. I replaced all the QuadControl.cpp functions with the code I made for the FCND-Controller-CPP project. I confirmed that the pass criterion of < 1m was met as with the original code.
 
-2. Replace `QuadControlParams.txt` with the control parameters you came up with in the last project.
+2. I replace almost all of the parameters related to the PID control in`QuadControlParams.txt` with the control parameters I came up with in the last project. 
 
-3. Run scenario `11_GPSUpdate`. If your controller crashes immediately do not panic. Flying from an estimated state (even with ideal sensors) is very different from flying with ideal pose. You may need to de-tune your controller. Decrease the position and velocity gains (we’ve seen about 30% detuning being effective) to stabilize it.  Your goal is to once again complete the entire simulation cycle with an estimated position error of < 1m.
+3. Run scenario `11_GPSUpdate`. I changed the following three KpPos parameters to complete the entire simulation cycle with an estimated position error of < 1m.
 
-**Hint: you may find it easiest to do your de-tuning as a 2 step process by reverting to ideal sensors and de-tuning under those conditions first.**
+   ```c
+   # Position control gains
+   kpPosXY = 2
+   kpPosZ = 4
+   KiPosZ = 20
+   ```
+
+The result is a square trajectory run as shown below.
+
+![Final run good]( Docs/Final-GPSUpdate-QuadControl2.mov)
 
 ***Success criteria:*** *Your objective is to complete the entire simulation cycle with estimated position error of < 1m.
 
 ```c
-Simulation #12 (../config/11_GPSUpdate.txt)
+Simulation #33 (../config/11_GPSUpdate.txt)
 PASS: ABS(Quad.Est.E.Pos) was less than 1.000000 for at least 20.000000 seconds
 ```
 
