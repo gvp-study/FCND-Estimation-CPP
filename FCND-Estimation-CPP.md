@@ -237,7 +237,17 @@ In this next step you will be implementing the prediction step of your filter.
    
    ```
 
-5. I tuned the process parameters`QPosXYStd` to 0.01 and the `QVelXYStd` to 0.1 in `QuadEstimatorEKF.txt` to keep the 10 graphs within the white sigma bounds. The result looks as follows. The estimates for the 10 runs lie comfortably within the sigma bounds.
+5. I tuned the process parameters`QPosXYStd` to 0.01 and the `QVelXYStd` to 0.1 in `QuadEstimatorEKF.txt` to keep the 10 graphs within the white sigma bounds. 
+
+   ```c
+   QPosXYStd = 0.01
+   QPosZStd = .05
+   QVelXYStd = .1
+   QVelZStd = .2
+   QYawStd = .05
+   ```
+
+   The result looks as follows. The estimates for the 10 runs lie comfortably within the sigma bounds.
 
 ![good covariance](Docs/09_PredictCovariance_1.png)
 
@@ -250,7 +260,7 @@ Up until now we've only used the accelerometer and gyro for our state estimation
 
 1. Run scenario `10_MagUpdate`.  This scenario uses a realistic IMU, but the magnetometer update hasn’t been implemented yet. As a result, you will notice that the estimate yaw is drifting away from the real value (and the estimated standard deviation is also increasing).  Note that in this case the plot is showing you the estimated yaw error (`quad.est.e.yaw`), which is drifting away from zero as the simulation runs.  You should also see the estimated standard deviation of that state (white boundary) is also increasing.
 
-2. Tune the parameter `QYawStd` (`QuadEstimatorEKF.txt`) for the QuadEstimatorEKF so that it approximately captures the magnitude of the drift, as demonstrated here:
+2. I tuned the parameter `QYawStd` (`QuadEstimatorEKF.txt`) to 0.1 for the QuadEstimatorEKF so that it approximately captures the magnitude of the drift, as demonstrated here:
 
 ![mag drift](images/mag-drift.png)
 
@@ -372,16 +382,20 @@ Up to this point, we have been working with a controller that has been relaxed t
 
 1. I replaced all the QuadControl.cpp functions with the code I made for the FCND-Controller-CPP project. I confirmed that the pass criterion of < 1m was met as with the original code.
 
-2. I replace almost all of the parameters related to the PID control in`QuadControlParams.txt` with the control parameters I came up with in the last project. 
-
-3. Ran scenario `11_GPSUpdate`. I had to change the following three KpPos parameters to complete the entire simulation cycle with an estimated position error of < 1m. All the other PID parameters were copied from the Controls project.
+2. I replace almost all of the parameters related to the PID control in`QuadControlParams.txt` with the control parameters I came up with in the last project except for the 5 parameters shown below. This was done to make the AttitudeControl scenario pass the criteria.
 
    ```c
    # Position control gains
    kpPosXY = 2
    kpPosZ = 4
    KiPosZ = 20
+     
+   # Angle control gains
+   kpBank = 10
+   kpYaw = 4
    ```
+
+3. Ran scenario `11_GPSUpdate`. I had to change the following three KpPos parameters to complete the entire simulation cycle with an estimated position error of < 1m. 
 
 The result is a square trajectory run as shown in the figure and movie below.
 
