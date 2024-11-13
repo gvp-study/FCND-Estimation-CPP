@@ -260,7 +260,7 @@ Up until now we've only used the accelerometer and gyro for our state estimation
 
 1. Run scenario `10_MagUpdate`.  This scenario uses a realistic IMU, but the magnetometer update hasn’t been implemented yet. As a result, you will notice that the estimate yaw is drifting away from the real value (and the estimated standard deviation is also increasing).  Note that in this case the plot is showing you the estimated yaw error (`quad.est.e.yaw`), which is drifting away from zero as the simulation runs.  You should also see the estimated standard deviation of that state (white boundary) is also increasing.
 
-2. I tuned the parameter `QYawStd` (`QuadEstimatorEKF.txt`) to 0.1 for the QuadEstimatorEKF so that it approximately captures the magnitude of the drift, as demonstrated here:
+2. I tuned the parameter `QYawStd` (`QuadEstimatorEKF.txt`) to 0.2 for the QuadEstimatorEKF so that it approximately captures the magnitude of the drift, as demonstrated here:
 
 ![mag drift](images/mag-drift.png)
 
