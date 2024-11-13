@@ -2,27 +2,6 @@
 
 Welcome to the estimation project.  In this project, you will be developing the estimation portion of the controller used in the CPP simulator.  By the end of the project, your simulated quad will be flying with your estimator and your custom controller (from the previous project)!
 
-This README is broken down into the following sections:
-
- - [Setup](#setup) - the environment and code setup required to get started and a brief overview of the project structure
- - [The Tasks](#the-tasks) - the tasks you will need to complete for the project
- - [Tips and Tricks](#tips-and-tricks) - some additional tips and tricks you may find useful along the way
- - [Submission](#submission) - overview of the requirements for your project submission
-
-
-## Setup ##
-
-This project will continue to use the C++ development environment you set up in the Controls C++ project.
-
- 1. Clone the repository
- ```
- git clone https://github.com/udacity/FCND-Estimation-CPP.git
- ```
-
- 2. Import the code into your IDE like done in the [Controls C++ project](https://github.com/udacity/FCND-Controls-CPP#development-environment-setup)
-
- 3. You should now be able to compile and run the estimation simulator just as you did in the controls project
-
 
 ### Project Structure ###
 
@@ -41,23 +20,6 @@ For this project, you will be interacting with a few more files than before.
    - `Quad.Est.S.X` is the estimated standard deviation of the X state (that is, the square root of the appropriate diagonal variable in the covariance matrix). More generally, the variables in `<vehicle>.Est.S.*` are standard deviations calculated from the estimator state covariance matrix.
 
    - `Quad.Est.D` contains miscellaneous additional debug variables useful in diagnosing the filter. You may or might not find these useful but they were helpful to us in verifying the filter and may give you some ideas if you hit a block.
-
-
-#### `config` Directory ####
-
-In the `config` directory, in addition to finding the configuration files for your controller and your estimator, you will also see configuration files for each of the simulations.  For this project, you will be working with simulations 06 through 11 and you may find it insightful to take a look at the configuration for the simulation.
-
-As an example, if we look through the configuration file for scenario 07, we see the following parameters controlling the sensor:
-
-```
-# Sensors
-Quad.Sensors = SimIMU
-# use a perfect IMU
-SimIMU.AccelStd = 0,0,0
-SimIMU.GyroStd = 0,0,0
-```
-
-This configuration tells us that the simulator is only using an IMU and the sensor data will have no noise.  You will notice that for each simulator these parameters will change slightly as additional sensors are being used and the noise behavior of the sensors change.
 
 
 ## The Tasks ##
@@ -84,19 +46,21 @@ GPS X Std: 0.7204664990698312
 IMU X Std: 0.5102750028692653
 ```
 
-This data was then copied onto the config/06_SensorNoise.txt file as shown below
+This data was used to set the standard deviations on the config/06_SensorNoise.txt file as shown below
 
 ```c
-MeasuredStdDev_GPSPosXY = 0.7204664990698312
-MeasuredStdDev_AccelXY = 0.5102750028692653
+MeasuredStdDev_GPSPosXY = 0.72
+MeasuredStdDev_AccelXY = 0.52
 ```
 
 The result when I ran the simulation is shown below with 68% of the measurements falling within the newly set standard deviation bounds.
 
 ![Sensor Noise](Docs/06_SensorNoise.png)
 
+The test passed as shown below.
+
 ```c
-Simulation #14 (../config/06_SensorNoise.txt)
+Simulation #3 (../config/06_SensorNoise.txt)
 PASS: ABS(Quad.GPS.X-Quad.Pos.X) was less than MeasuredStdDev_GPSPosXY for 68% of the time
 PASS: ABS(Quad.IMU.AX-0.000000) was less than MeasuredStdDev_AccelXY for 70% of the time
 ```
@@ -173,7 +137,7 @@ void QuadEstimatorEKF::UpdateFromIMU(V3F accel, V3F gyro)
 
 
 
-***Success criteria:*** *Your attitude estimator needs to get within 0.1 rad for each of the Euler angles for at least 3 seconds.*
+***Success criteria:*** *Your attitude estimator needs to get within 0.1 rad for each of the Euler angles for at least 3 seconds.*. This passed as shown below.
 
 ```c
 Simulation #63 (../config/07_AttitudeEstimation.txt)
@@ -192,7 +156,14 @@ In this next step you will be implementing the prediction step of your filter.
 
 2. In `QuadEstimatorEKF.cpp`, implement the state prediction step in the `PredictState()` functon. If you do it correctly, when you run scenario `08_PredictState` you should see the estimator state track the actual state, with only reasonably slow drift, as shown in the figure below:
 
-3. ![predict drift](Docs/08_PredictState_1.png)
+   ![predict drift](Docs/08_PredictState_1.png)
+
+3. Now let's introduce a realistic IMU, one with noise.  Run scenario `09_PredictionCov`. You will see a small fleet of quadcopter all using your prediction code to integrate forward. You will see two plots:
+   - The top graph shows 10 (prediction-only) position X estimates
+   - The bottom graph shows 10 (prediction-only) velocity estimates
+     You will notice however that the estimated covariance (white bounds) currently do not capture the growing errors.
+
+4. In `QuadEstimatorEKF.cpp`, calculate the partial derivative of the body-to-global rotation matrix in the function `GetRbgPrime()`.  Once you have that function implement, implement the rest of the prediction step (predict the state covariance forward) in `Predict()`.
 
 ![predict drift](images/predict-slow-drift.png)
 
@@ -203,13 +174,70 @@ In this next step you will be implementing the prediction step of your filter.
 
 4. In `QuadEstimatorEKF.cpp`, calculate the partial derivative of the body-to-global rotation matrix in the function `GetRbgPrime()`.  Once you have that function implement, implement the rest of the prediction step (predict the state covariance forward) in `Predict()`.
 
-**Hint: see section 7.2 of [Estimation for Quadrotors](https://www.overleaf.com/read/vymfngphcccj) for a refresher on the the transition model and the partial derivatives you may need**
+   The Predict function was completed as shown below. It updates the state with the ekfState and the covariance of the estimate with the ekfConv
 
-**Hint: When it comes to writing the function for GetRbgPrime, make sure to triple check you've set all the correct parts of the matrix.**
+   ```c++
+   void QuadEstimatorEKF::Predict(float dt, V3F accel, V3F gyro)
+   {
+     // predict the state forward
+     VectorXf newState = PredictState(ekfState, dt, accel, gyro);
+   
+     // Predict the current covariance forward by dt using the current accelerations and body rates as input.
+     // INPUTS: 
+     //   dt: time step to predict forward by [s]
+     //   accel: acceleration of the vehicle, in body frame, *not including gravity* [m/s2]
+     //   gyro: body rates of the vehicle, in body frame [rad/s]
+     //   state (member variable): current state (state at the beginning of this prediction)
+     //   
+     // OUTPUT:
+     //   update the member variable cov to the predicted covariance
+   
+     // HINTS
+     // - update the covariance matrix cov according to the EKF equation.
+     // 
+     // - you may find the current estimated attitude in variables rollEst, pitchEst, state(6).
+     //
+     // - use the class MatrixXf for matrices. To create a 3x5 matrix A, use MatrixXf A(3,5).
+     //
+     // - the transition model covariance, Q, is loaded up from a parameter file in member variable Q
+     // 
+     // - This is unfortunately a messy step. Try to split this up into clear, manageable steps:
+     //   1) Calculate the necessary helper matrices, building up the transition jacobian
+     //   2) Once all the matrices are there, write the equation to update cov.
+     //
+     // - if you want to transpose a matrix in-place, use A.transposeInPlace(), not A = A.transpose()
+     //
+     // we'll want the partial derivative of the Rbg matrix
+     MatrixXf RbgPrime = GetRbgPrime(rollEst, pitchEst, ekfState(6));
+   
+     // we've created an empty Jacobian for you, currently simply set to identity
+     MatrixXf gPrime(QUAD_EKF_NUM_STATES, QUAD_EKF_NUM_STATES);
+     gPrime.setIdentity();
+   
+     ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
+   
+     gPrime(0, 3) = dt;
+     gPrime(1, 4) = dt;
+     gPrime(2, 5) = dt;
+     
+     VectorXf u(3);
+     u << accel[0], accel[1], accel[2];
+     VectorXf Rbg_u = RbgPrime * (u * dt);
+     
+     gPrime(3, 6) = Rbg_u(0);
+     gPrime(4, 6) = Rbg_u(1);
+     gPrime(5, 6) = Rbg_u(2);
+   
+     ekfCov = gPrime * ekfCov * gPrime.transpose() + Q;
+   
+     /////////////////////////////// END STUDENT CODE ////////////////////////////
+   
+     ekfState = newState;
+   }
+   
+   ```
 
-**Hint: recall that the control input is the acceleration!**
-
-5. I tuned the process parameters`QPosXYStd` to 0.01 and the `QVelXYStd` to 0.1 in `QuadEstimatorEKF.txt` to keep the 10 graphs within the white sigma bounds. The result looks as follows:
+5. I tuned the process parameters`QPosXYStd` to 0.01 and the `QVelXYStd` to 0.1 in `QuadEstimatorEKF.txt` to keep the 10 graphs within the white sigma bounds. The result looks as follows. The estimates for the 10 runs lie comfortably within the sigma bounds.
 
 ![good covariance](Docs/09_PredictCovariance_1.png)
 
@@ -226,7 +254,44 @@ Up until now we've only used the accelerometer and gyro for our state estimation
 
 ![mag drift](images/mag-drift.png)
 
-3. Implement magnetometer update in the function `UpdateFromMag()`.  Once completed, you should see a resulting plot similar to this one:
+3. Implemented the magnetometer update in the function `UpdateFromMag()`. Since the yaw directly maps into the magnetometer output the h function and measurement covariance matrix are simple matrices.
+
+   ```c++
+   void QuadEstimatorEKF::UpdateFromMag(float magYaw)
+   {
+     VectorXf z(1), zFromX(1);
+     z(0) = magYaw;
+   
+     MatrixXf hPrime(1, QUAD_EKF_NUM_STATES);
+     hPrime.setZero();
+   
+     // MAGNETOMETER UPDATE
+     // Hints: 
+     //  - Your current estimated yaw can be found in the state vector: ekfState(6)
+     //  - Make sure to normalize the difference between your measured and estimated yaw
+     //    (you don't want to update your yaw the long way around the circle)
+     //  - The magnetomer measurement covariance is available in member variable R_Mag
+     ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
+   
+     hPrime(6) = 1;
+     
+     zFromX(0) = ekfState(6);
+     float dYaw = magYaw - ekfState(6);
+     if (dYaw > F_PI) {
+         zFromX(0) += 2.f*F_PI;
+     } else if (dYaw < -F_PI) {
+         zFromX(0) -= 2.f*F_PI;
+     }
+   
+     /////////////////////////////// END STUDENT CODE ////////////////////////////
+   
+     Update(z, hPrime, R_Mag, zFromX);
+   }
+   ```
+
+   
+
+   The output of the plot of the yaw angle and its error is shown below.:
 
 ![mag good](Docs/10_MagUpdate_1.png)
 
@@ -305,13 +370,11 @@ PASS: ABS(Quad.Est.E.Pos) was less than 1.000000 for at least 20.000000 seconds
 
 Up to this point, we have been working with a controller that has been relaxed to work with an estimated state instead of a real state.  So now, you will see how well your controller performs and de-tune your controller accordingly.
 
-I replaced all the QuadControl.cpp functions with the code I made for the FCND-Controller-CPP project. I confirmed that the pass criterion of < 1m was met as with the original code.
-
 1. I replaced all the QuadControl.cpp functions with the code I made for the FCND-Controller-CPP project. I confirmed that the pass criterion of < 1m was met as with the original code.
 
 2. I replace almost all of the parameters related to the PID control in`QuadControlParams.txt` with the control parameters I came up with in the last project. 
 
-3. Run scenario `11_GPSUpdate`. I changed the following three KpPos parameters to complete the entire simulation cycle with an estimated position error of < 1m.
+3. Ran scenario `11_GPSUpdate`. I had to change the following three KpPos parameters to complete the entire simulation cycle with an estimated position error of < 1m. All the other PID parameters were copied from the Controls project.
 
    ```c
    # Position control gains
@@ -331,13 +394,6 @@ Simulation #33 (../config/11_GPSUpdate.txt)
 PASS: ABS(Quad.Est.E.Pos) was less than 1.000000 for at least 20.000000 seconds
 ```
 
-
-## Tips and Tricks ##
-
- - When it comes to transposing matrices, `.transposeInPlace()` is the function you want to use to transpose a matrix
-
- - The [Estimation for Quadrotors](https://www.overleaf.com/read/vymfngphcccj) document contains a helpful mathematical breakdown of the core elements on your estimator
-
 ## Submission ##
 
 For this project, you will need to submit:
@@ -347,7 +403,7 @@ For this project, you will need to submit:
    - `config/QuadEstimatorEKF.txt`
 
  - a re-tuned controller that, in conjunction with your tuned estimator, is capable of meeting the criteria laid out in Step 6 by submitting:
-   - `QuadController.cpp`
+   - `QuadController.cpp`: I modified the QuadControl.cpp with the code from the Controls project.
    - `config/QuadControlParams.txt`
 
  - a write up addressing all the points of the rubric
