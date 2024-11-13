@@ -383,7 +383,9 @@ Up to this point, we have been working with a controller that has been relaxed t
    KiPosZ = 20
    ```
 
-The result is a square trajectory run as shown below.
+The result is a square trajectory run as shown in the figure and movie below.
+
+![Final run good]( Docs/11_GPSUpdate_Final.png)
 
 ![Final run good]( Docs/Final-GPSUpdate-QuadControl2.mov)
 
