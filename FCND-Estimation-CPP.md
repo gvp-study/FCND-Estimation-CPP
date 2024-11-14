@@ -313,8 +313,11 @@ PASS: ABS(Quad.Est.E.Yaw) was less than 0.120000 for at least 10.000000 seconds
 PASS: ABS(Quad.Est.E.Yaw-0.000000) was less than Quad.Est.S.Yaw for 71% of the time
 ```
 
+The combined screenshot of the QuadEstimator.txt, the Simulator window and the status console showing the two PASS status lines is shown below.
 
-### Step 5: Closed Loop + GPS Update ###
+![mag good](Docs/MagUpdate_PASS.png)
+
+### Step 5: Closed Loop + GPS Update
 
 1. Run scenario `11_GPSUpdate`.  To get the realistic IMU I modified`config/11_GPSUpdate.txt`:
 
