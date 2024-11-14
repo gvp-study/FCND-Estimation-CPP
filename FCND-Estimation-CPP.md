@@ -65,6 +65,9 @@ PASS: ABS(Quad.GPS.X-Quad.Pos.X) was less than MeasuredStdDev_GPSPosXY for 68% o
 PASS: ABS(Quad.IMU.AX-0.000000) was less than MeasuredStdDev_AccelXY for 70% of the time
 ```
 
+The combined screenshot of the QuadEstimator.txt, the Simulator window and the status console showing the two PASS status lines is shown below.
+
+![mag good](Docs/SensorNoise_PASS.png)
 
 ### Step 2: Attitude Estimation ###
 
@@ -144,6 +147,11 @@ Simulation #63 (../config/07_AttitudeEstimation.txt)
 PASS: ABS(Quad.Est.E.MaxEuler) was less than 0.100000 for at least 3.000000 seconds
 ```
 
+The combined screenshot of the QuadEstimator.txt, the Simulator window and the status console showing the PASS status line is shown below.
+
+![mag good](Docs/AttitudeEstimation_PASS.png)
+
+### 
 
 ### Step 3: Prediction Step ###
 
@@ -260,7 +268,7 @@ Up until now we've only used the accelerometer and gyro for our state estimation
 
 1. Run scenario `10_MagUpdate`.  This scenario uses a realistic IMU, but the magnetometer update hasn’t been implemented yet. As a result, you will notice that the estimate yaw is drifting away from the real value (and the estimated standard deviation is also increasing).  Note that in this case the plot is showing you the estimated yaw error (`quad.est.e.yaw`), which is drifting away from zero as the simulation runs.  You should also see the estimated standard deviation of that state (white boundary) is also increasing.
 
-2. I tuned the parameter `QYawStd` (`QuadEstimatorEKF.txt`) to 0.2 for the QuadEstimatorEKF so that it approximately captures the magnitude of the drift, as demonstrated here:
+2. I tuned the parameter `MagYawStd` (`QuadEstimatorEKF.txt`) to 0.2 for the QuadEstimatorEKF so that it approximately captures the magnitude of the drift, as demonstrated here:
 
 ![mag drift](images/mag-drift.png)
 
@@ -378,6 +386,10 @@ The result is a run shown below which meets the estimate position error of < 1m.
 Simulation #3 (../config/11_GPSUpdate.txt)
 PASS: ABS(Quad.Est.E.Pos) was less than 1.000000 for at least 20.000000 seconds
 ```
+
+The combined screenshot of the QuadEstimator.txt, the Simulator window and the status console showing the PASS status lines is shown below.
+
+![mag good](Docs/GPSUpdate_PASS.png)
 
 ### Step 6: Adding Your Controller ###
 
