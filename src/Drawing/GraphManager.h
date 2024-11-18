@@ -30,7 +30,7 @@ public:
     }
   }
   
-  shared_ptr<Graph> graph1, graph2;
+  shared_ptr<Graph> graph1, graph2, graph3;
   std::vector<shared_ptr<DataSource> > _sources;
 
   std::vector<std::string> GetGraphableStrings();

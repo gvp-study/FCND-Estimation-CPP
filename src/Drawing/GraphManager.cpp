@@ -48,12 +48,14 @@ GraphManager::GraphManager(bool own_window)
 
   graph1.reset(new Graph("Graph1"));
   graph2.reset(new Graph("Graph2"));
+  graph3.reset(new Graph("Graph3"));
 }
 
 GraphManager::~GraphManager()
 {
   graph1.reset();
   graph2.reset();
+  graph3.reset();
   Sleep(100);
   _g_GraphManager = NULL;
 }
@@ -62,12 +64,14 @@ void GraphManager::Reset()
 {
   graph1->Reset();
   graph2->Reset();
+  graph3->Reset();
 }
 
 void GraphManager::Clear()
 {
   graph1->Clear();
   graph2->Clear();
+  graph3->Clear();
 }
 
 void GraphManager::UpdateData(double time)
@@ -79,6 +83,10 @@ void GraphManager::UpdateData(double time)
   if (graph2)
   {
     graph2->Update(time, _sources);
+  }
+  if (graph3)
+  {
+    graph3->Update(time, _sources);
   }
 
   for (auto i = _sources.begin(); i != _sources.end(); i++)
@@ -163,6 +171,24 @@ void GraphManager::Paint()
     glPopMatrix();
   }
 
+  if (graph3 && graph3->_series.size())
+  {
+    glPushMatrix();
+    glTranslatef(0.0f, 1.6f, 0);
+    glScalef(1, .5f, 1);
+
+    glColor3f(0, 0, 0);
+    glBegin(GL_QUADS);
+    glVertex2f(-1, 1);
+    glVertex2f(1, 1);
+    glVertex2f(1, -1);
+    glVertex2f(-1, -1);
+    glEnd();
+
+    graph3->Draw();
+    glPopMatrix();
+  }
+
   glFlush();  // Render now
 
   if (_ownWindow)
@@ -186,6 +212,7 @@ vector<string> GraphManager::GetGraphableStrings()
     {
       ret.push_back("AddGraph1." + *j);
       ret.push_back("AddGraph2." + *j);
+      ret.push_back("AddGraph3." + *j);
     }
   }
   return ret;
@@ -204,6 +231,11 @@ void GraphManager::GraphCommand(string cmd)
     graph2->AddItem(cmd.substr(10));
     return;
   }
+  else if (cmd.find("AddGraph3.") == 0)
+  {
+    graph3->AddItem(cmd.substr(10));
+    return;
+  }
 
   vector<string> s = SimpleFunctionParser(cmd);
 
@@ -211,6 +243,8 @@ void GraphManager::GraphCommand(string cmd)
   {
     int graphNum = atoi(s[1].c_str());
     shared_ptr<Graph> g = (graphNum == 1) ? graph1 : graph2;
+    if(graphNum == 3)
+      g = graph3;
     g->SetTitle(SLR::UnQuote(s[2]));
   }
   else if (s.size() >= 3 && s[0] == "Plot")
@@ -218,6 +252,8 @@ void GraphManager::GraphCommand(string cmd)
     int graphNum = atoi(s[1].c_str());
     shared_ptr<Graph> g = (graphNum == 1) ? graph1 : graph2;
     vector<string> args(s.begin() + 2, s.end());
+    if(graphNum == 3)
+      g = graph3;
     g->AddSeries(s[2], true, V3F(), args);
   }
   else
